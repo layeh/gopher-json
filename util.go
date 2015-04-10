@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	errFunction = errors.New("cannot convert function to string")
-	errChannel  = errors.New("cannot convert channel to string")
-	errUserData = errors.New("cannot convert userdata to string")
+	errFunction = errors.New("cannot encode function to JSON")
+	errChannel  = errors.New("cannot encode channel to JSON")
+	errUserData = errors.New("cannot encode userdata to JSON")
 )
 
 type jsonValue struct {
