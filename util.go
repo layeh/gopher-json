@@ -43,7 +43,8 @@ func toJSON(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err er
 		var obj map[string]jsonValue
 
 		if visited[converted] {
-			return nil, errNested
+			panic(errNested)
+			return // unreachable
 		}
 		visited[converted] = true
 
