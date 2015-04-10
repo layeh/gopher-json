@@ -42,6 +42,16 @@ func TestSimple(t *testing.T) {
 	assert(json.decode("null") == nil)
 
 	assert(json.decode(json.encode({person={name = "tim",}})).person.name == "tim")
+
+	local obj = {
+		abc = 123,
+		def = nil,
+	}
+	local obj2 = {
+		obj = obj,
+	}
+	obj.obj2 = obj2
+	assert(json.encode(obj) == nil)
 	`
 	s := lua.NewState()
 	Preload(s)

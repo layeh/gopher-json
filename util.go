@@ -12,17 +12,19 @@ var (
 	errFunction = errors.New("cannot encode function to JSON")
 	errChannel  = errors.New("cannot encode channel to JSON")
 	errUserData = errors.New("cannot encode userdata to JSON")
+	errNested   = errors.New("cannot encode nested tables to JSON")
 )
 
 type jsonValue struct {
 	lua.LValue
+	visited map[*lua.LTable]bool
 }
 
 func (j jsonValue) MarshalJSON() ([]byte, error) {
-	return toJSON(j.LValue)
+	return toJSON(j.LValue, j.visited)
 }
 
-func toJSON(value lua.LValue) (data []byte, err error) {
+func toJSON(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err error) {
 	switch converted := value.(type) {
 	case lua.LBool:
 		data, err = json.Marshal(converted)
@@ -40,6 +42,11 @@ func toJSON(value lua.LValue) (data []byte, err error) {
 		var arr []jsonValue
 		var obj map[string]jsonValue
 
+		if visited[converted] {
+			return nil, errNested
+		}
+		visited[converted] = true
+
 		converted.ForEach(func(k lua.LValue, v lua.LValue) {
 			i, numberKey := k.(lua.LNumber)
 			if numberKey && obj == nil {
@@ -50,10 +57,10 @@ func toJSON(value lua.LValue) (data []byte, err error) {
 					for i, value := range arr {
 						obj[strconv.Itoa(i+1)] = value
 					}
-					obj[strconv.Itoa(index+1)] = jsonValue{v}
+					obj[strconv.Itoa(index+1)] = jsonValue{v, visited}
 					return
 				}
-				arr = append(arr, jsonValue{v})
+				arr = append(arr, jsonValue{v, visited})
 				return
 			}
 			if obj == nil {
@@ -62,7 +69,7 @@ func toJSON(value lua.LValue) (data []byte, err error) {
 					obj[strconv.Itoa(i+1)] = value
 				}
 			}
-			obj[k.String()] = jsonValue{v}
+			obj[k.String()] = jsonValue{v, visited}
 		})
 		if obj != nil {
 			data, err = json.Marshal(obj)

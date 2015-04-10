@@ -28,7 +28,8 @@ func apiDecode(L *lua.LState) int {
 func apiEncode(L *lua.LState) int {
 	value := L.CheckAny(1)
 
-	data, err := toJSON(value)
+	visited := make(map[*lua.LTable]bool)
+	data, err := toJSON(value, visited)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(err.Error()))
