@@ -12,7 +12,7 @@ var (
 	errFunction = errors.New("cannot encode function to JSON")
 	errChannel  = errors.New("cannot encode channel to JSON")
 	errUserData = errors.New("cannot encode userdata to JSON")
-	errNested   = errors.New("cannot encode nested tables to JSON")
+	errNested   = errors.New("cannot encode recursively nested tables to JSON")
 )
 
 type jsonValue struct {
