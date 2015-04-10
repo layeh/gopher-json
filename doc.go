@@ -1,4 +1,4 @@
-// Package json is a simple JSON encode/decoder for gopher-lua.
+// Package json is a simple JSON encoder/decoder for gopher-lua.
 //
 // Documentation
 //
