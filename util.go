@@ -11,6 +11,7 @@ import (
 var (
 	errFunction = errors.New("cannot encode function to JSON")
 	errChannel  = errors.New("cannot encode channel to JSON")
+	errState    = errors.New("cannot encode state to JSON")
 	errUserData = errors.New("cannot encode userdata to JSON")
 	errNested   = errors.New("cannot encode recursively nested tables to JSON")
 )
@@ -36,6 +37,8 @@ func toJSON(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err er
 		err = errFunction
 	case *lua.LNilType:
 		data, err = json.Marshal(converted)
+	case *lua.LState:
+		err = errState
 	case lua.LString:
 		data, err = json.Marshal(converted)
 	case *lua.LTable:
