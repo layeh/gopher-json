@@ -96,13 +96,13 @@ func fromJSON(L *lua.LState, value interface{}) lua.LValue {
 	case string:
 		return lua.LString(converted)
 	case []interface{}:
-		arr := L.NewTable()
+		arr := L.CreateTable(len(converted), 0)
 		for _, item := range converted {
 			arr.Append(fromJSON(L, item))
 		}
 		return arr
 	case map[string]interface{}:
-		tbl := L.NewTable()
+		tbl := L.CreateTable(0, len(converted))
 		for key, item := range converted {
 			tbl.RawSetH(lua.LString(key), fromJSON(L, item))
 		}
