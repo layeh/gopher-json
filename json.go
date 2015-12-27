@@ -4,6 +4,13 @@ import (
 	"github.com/yuin/gopher-lua"
 )
 
+// Loader is the module loader function.
+var Loader lua.LGFunction
+
+func init() {
+	Loader = load
+}
+
 // Preload adds json to the given Lua state's package.preload table. After it
 // has been preloaded, it can be loaded using require:
 //

@@ -59,3 +59,17 @@ func TestSimple(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestCustomRequire(t *testing.T) {
+	const str = `
+	local j = require("JSON")
+	assert(type(j) == "table")
+	assert(type(j.decode) == "function")
+	assert(type(j.encode) == "function")
+	`
+	s := lua.NewState()
+	s.PreloadModule("JSON", Loader)
+	if err := s.DoString(str); err != nil {
+		t.Error(err)
+	}
+}
