@@ -13,4 +13,4 @@
 // Below is an example usage of the library:
 //  L := lua.NewState()
 //  luajson.Preload(s)
-package json
+package json // import "layeh.com/gopher-json"
