@@ -25,6 +25,11 @@ func (j jsonValue) MarshalJSON() ([]byte, error) {
 	return toJSON(j.LValue, j.visited)
 }
 
+// ToJSON encodes the lua.LValue as json and returns it
+func ToJSON(value lua.LValue) (data []byte, err error) {
+	return toJSON(value, make(map[*lua.LTable]bool))
+}
+
 func toJSON(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err error) {
 	switch converted := value.(type) {
 	case lua.LBool:
@@ -84,6 +89,16 @@ func toJSON(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err er
 		err = errUserData
 	}
 	return
+}
+
+// FromJSON returns the decodes the given data and returns an lua.LValue
+func FromJSON(L *lua.LState, data []byte) (lua.LValue, error) {
+	var value interface{}
+	err := json.Unmarshal(data, &value)
+	if err != nil {
+		return nil, err
+	}
+	return fromJSON(L, value), nil
 }
 
 func fromJSON(L *lua.LState, value interface{}) lua.LValue {
