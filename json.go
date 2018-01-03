@@ -32,22 +32,20 @@ var api = map[string]lua.LGFunction{
 func apiDecode(L *lua.LState) int {
 	str := L.CheckString(1)
 
-	var value interface{}
-	err := json.Unmarshal([]byte(str), &value)
+	value, err := Decode(L, []byte(str))
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
-	L.Push(fromJSON(L, value))
+	L.Push(value)
 	return 1
 }
 
 func apiEncode(L *lua.LState) int {
 	value := L.CheckAny(1)
 
-	visited := make(map[*lua.LTable]bool)
-	data, err := toJSON(value, visited)
+	data, err := Encode(value)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(err.Error()))
@@ -71,10 +69,15 @@ type jsonValue struct {
 }
 
 func (j jsonValue) MarshalJSON() ([]byte, error) {
-	return toJSON(j.LValue, j.visited)
+	return encode(j.LValue, j.visited)
 }
 
-func toJSON(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err error) {
+// Encode returns the JSON encoding of value.
+func Encode(value lua.LValue) ([]byte, error) {
+	return encode(value, make(map[*lua.LTable]bool))
+}
+
+func encode(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err error) {
 	switch converted := value.(type) {
 	case lua.LBool:
 		data, err = json.Marshal(converted)
@@ -135,7 +138,17 @@ func toJSON(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err er
 	return
 }
 
-func fromJSON(L *lua.LState, value interface{}) lua.LValue {
+// Decode converts the JSON encoded data to Lua values.
+func Decode(L *lua.LState, data []byte) (lua.LValue, error) {
+	var value interface{}
+	err := json.Unmarshal(data, &value)
+	if err != nil {
+		return nil, err
+	}
+	return decode(L, value), nil
+}
+
+func decode(L *lua.LState, value interface{}) lua.LValue {
 	switch converted := value.(type) {
 	case bool:
 		return lua.LBool(converted)
@@ -146,13 +159,13 @@ func fromJSON(L *lua.LState, value interface{}) lua.LValue {
 	case []interface{}:
 		arr := L.CreateTable(len(converted), 0)
 		for _, item := range converted {
-			arr.Append(fromJSON(L, item))
+			arr.Append(decode(L, item))
 		}
 		return arr
 	case map[string]interface{}:
 		tbl := L.CreateTable(0, len(converted))
 		for key, item := range converted {
-			tbl.RawSetH(lua.LString(key), fromJSON(L, item))
+			tbl.RawSetH(lua.LString(key), decode(L, item))
 		}
 		return tbl
 	}
