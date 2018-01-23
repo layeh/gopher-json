@@ -63,22 +63,21 @@ var (
 	errNested   = errors.New("cannot encode recursively nested tables to JSON")
 )
 
+// Encode returns the JSON encoding of value.
+func Encode(value lua.LValue) ([]byte, error) {
+	return json.Marshal(jsonValue{
+		LValue:  value,
+		visited: make(map[*lua.LTable]bool),
+	})
+}
+
 type jsonValue struct {
 	lua.LValue
 	visited map[*lua.LTable]bool
 }
 
-func (j jsonValue) MarshalJSON() ([]byte, error) {
-	return encode(j.LValue, j.visited)
-}
-
-// Encode returns the JSON encoding of value.
-func Encode(value lua.LValue) ([]byte, error) {
-	return encode(value, make(map[*lua.LTable]bool))
-}
-
-func encode(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err error) {
-	switch converted := value.(type) {
+func (j jsonValue) MarshalJSON() (data []byte, err error) {
+	switch converted := j.LValue.(type) {
 	case lua.LBool:
 		data, err = json.Marshal(converted)
 	case lua.LChannel:
@@ -97,10 +96,10 @@ func encode(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err er
 		var arr []jsonValue
 		var obj map[string]jsonValue
 
-		if visited[converted] {
+		if j.visited[converted] {
 			panic(errNested)
 		}
-		visited[converted] = true
+		j.visited[converted] = true
 
 		converted.ForEach(func(k lua.LValue, v lua.LValue) {
 			i, numberKey := k.(lua.LNumber)
@@ -112,10 +111,10 @@ func encode(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err er
 					for i, value := range arr {
 						obj[strconv.Itoa(i+1)] = value
 					}
-					obj[strconv.Itoa(index+1)] = jsonValue{v, visited}
+					obj[strconv.Itoa(index+1)] = jsonValue{v, j.visited}
 					return
 				}
-				arr = append(arr, jsonValue{v, visited})
+				arr = append(arr, jsonValue{v, j.visited})
 				return
 			}
 			if obj == nil {
@@ -124,7 +123,7 @@ func encode(value lua.LValue, visited map[*lua.LTable]bool) (data []byte, err er
 					obj[strconv.Itoa(i+1)] = value
 				}
 			}
-			obj[k.String()] = jsonValue{v, visited}
+			obj[k.String()] = jsonValue{v, j.visited}
 		})
 		if obj != nil {
 			data, err = json.Marshal(obj)
