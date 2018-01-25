@@ -30,6 +30,10 @@ var api = map[string]lua.LGFunction{
 }
 
 func apiDecode(L *lua.LState) int {
+	if L.GetTop() != 1 {
+		L.Error(lua.LString("bad argument #1 to decode"), 1)
+		return 0
+	}
 	str := L.CheckString(1)
 
 	value, err := Decode(L, []byte(str))
@@ -43,6 +47,10 @@ func apiDecode(L *lua.LState) int {
 }
 
 func apiEncode(L *lua.LState) int {
+	if L.GetTop() != 1 {
+		L.Error(lua.LString("bad argument #1 to encode"), 1)
+		return 0
+	}
 	value := L.CheckAny(1)
 
 	data, err := Encode(value)
