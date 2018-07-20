@@ -52,6 +52,12 @@ func TestSimple(t *testing.T) {
 	}
 	obj.obj2 = obj2
 	assert(json.encode(obj) == nil)
+
+	local a = {}
+	for i=1, 5 do
+		a[i] = i
+	end
+	assert(json.encode(a) == "[1,2,3,4,5]")
 	`
 	s := lua.NewState()
 	Preload(s)
