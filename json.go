@@ -97,7 +97,7 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 		var obj map[string]jsonValue
 
 		if j.visited[converted] {
-			panic(errNested)
+			return nil, errNested
 		}
 		j.visited[converted] = true
 
