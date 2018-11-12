@@ -1,6 +1,8 @@
 package json
 
 import (
+	gojson "encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/yuin/gopher-lua"
@@ -64,6 +66,55 @@ func TestSimple(t *testing.T) {
 	if err := s.DoString(str); err != nil {
 		t.Error(err)
 	}
+}
+
+func TestEmptyMapArray(t *testing.T) {
+	const code = `
+local json = require("JSON")
+
+function test(input)
+	obj = json.decode(input)
+	return json.encode(obj)
+end
+`
+
+	L := lua.NewState()
+	defer L.Close()
+	L.PreloadModule("JSON", Loader)
+	if err := L.DoString(code); err != nil {
+		t.Error(err)
+	}
+
+	type genericObject map[string]interface{}
+
+	obj := genericObject{
+		"emptyObject": genericObject{},
+		"emptyArray": []string{},
+	}
+
+	raw, err := gojson.Marshal(obj)
+	if err != nil {
+		t.Error(err)
+	}
+	if err := L.CallByParam(lua.P{
+		Fn:      L.GetGlobal("test"),
+		NRet:    1,
+		Protect: true,
+	}, lua.LString(string(raw))); err != nil {
+		t.Error(err)
+	}
+	ret := L.Get(-1) // returned value
+	L.Pop(1)          // remove received value
+
+	var obj2 genericObject
+	err = gojson.Unmarshal([]byte(ret.String()), &obj2)
+	if err != nil {
+		t.Error(err)
+	}
+	if reflect.DeepEqual(obj, obj2) == false {
+		t.Errorf("Objects differ: in=%s out=%s", raw, ret.String())
+	}
+
 }
 
 func TestCustomRequire(t *testing.T) {
