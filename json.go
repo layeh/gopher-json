@@ -55,13 +55,13 @@ func apiEncode(L *lua.LState) int {
 	return 1
 }
 
-var (
-	errFunction = errors.New("cannot encode function to JSON")
-	errChannel  = errors.New("cannot encode channel to JSON")
-	errState    = errors.New("cannot encode state to JSON")
-	errUserData = errors.New("cannot encode userdata to JSON")
-	errNested   = errors.New("cannot encode recursively nested tables to JSON")
-)
+var errNested = errors.New("cannot encode recursively nested tables to JSON")
+
+type invalidTypeError lua.LValueType
+
+func (i invalidTypeError) Error() string {
+	return `cannot encode ` + lua.LValueType(i).String() + ` to JSON`
+}
 
 // Encode returns the JSON encoding of value.
 func Encode(value lua.LValue) ([]byte, error) {
@@ -80,16 +80,10 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 	switch converted := j.LValue.(type) {
 	case lua.LBool:
 		data, err = json.Marshal(converted)
-	case lua.LChannel:
-		err = errChannel
 	case lua.LNumber:
 		data, err = json.Marshal(converted)
-	case *lua.LFunction:
-		err = errFunction
 	case *lua.LNilType:
 		data, err = json.Marshal(converted)
-	case *lua.LState:
-		err = errState
 	case lua.LString:
 		data, err = json.Marshal(converted)
 	case *lua.LTable:
@@ -130,9 +124,8 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 		} else {
 			data, err = json.Marshal(arr)
 		}
-	case *lua.LUserData:
-		// TODO: call metatable __tostring?
-		err = errUserData
+	default:
+		err = invalidTypeError(j.LValue.Type())
 	}
 	return
 }
