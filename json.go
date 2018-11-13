@@ -83,7 +83,7 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 	case lua.LNumber:
 		data, err = json.Marshal(converted)
 	case *lua.LNilType:
-		data, err = json.Marshal(converted)
+		data = []byte(`null`)
 	case lua.LString:
 		data, err = json.Marshal(converted)
 	case *lua.LTable:

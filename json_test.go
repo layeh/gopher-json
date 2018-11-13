@@ -16,7 +16,7 @@ func TestSimple(t *testing.T) {
 	assert(json.encode(true) == "true")
 	assert(json.encode(1) == "1")
 	assert(json.encode(-10) == "-10")
-	assert(json.encode(nil) == "{}")
+	assert(json.encode(nil) == "null")
 
 	local obj = {"a",1,"b",2,"c",3}
 	local jsonStr = json.encode(obj)
