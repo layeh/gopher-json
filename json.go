@@ -79,13 +79,13 @@ type jsonValue struct {
 func (j jsonValue) MarshalJSON() (data []byte, err error) {
 	switch converted := j.LValue.(type) {
 	case lua.LBool:
-		data, err = json.Marshal(converted)
+		data, err = json.Marshal(bool(converted))
 	case lua.LNumber:
-		data, err = json.Marshal(converted)
+		data, err = json.Marshal(float64(converted))
 	case *lua.LNilType:
 		data = []byte(`null`)
 	case lua.LString:
-		data, err = json.Marshal(converted)
+		data, err = json.Marshal(string(converted))
 	case *lua.LTable:
 		var arr []jsonValue
 		var obj map[string]jsonValue
