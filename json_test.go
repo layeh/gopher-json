@@ -17,6 +17,17 @@ func TestSimple(t *testing.T) {
 	assert(json.encode(1) == "1")
 	assert(json.encode(-10) == "-10")
 	assert(json.encode(nil) == "null")
+	assert(json.encode({}) == "[]")
+	assert(json.encode({1, 2, 3}) == "[1,2,3]")
+
+	local _, err = json.encode({1, 2, [10] = 3})
+	assert(string.find(err, "sparse array"))
+
+	local _, err = json.encode({1, 2, 3, name = "Tim"})
+	assert(string.find(err, "mixed or invalid key types"))
+
+	local _, err = json.encode({name = "Tim", [false] = 123})
+	assert(string.find(err, "mixed or invalid key types"))
 
 	local obj = {"a",1,"b",2,"c",3}
 	local jsonStr = json.encode(obj)
@@ -30,14 +41,6 @@ func TestSimple(t *testing.T) {
 	local jsonObj = json.decode(jsonStr)
 	assert(obj.name == jsonObj.name)
 	assert(obj.number == jsonObj.number)
-
-	local obj = {"a","b",what="c",[5]="asd"}
-	local jsonStr = json.encode(obj)
-	local jsonObj = json.decode(jsonStr)
-	assert(obj[1] == jsonObj["1"])
-	assert(obj[2] == jsonObj["2"])
-	assert(obj.what == jsonObj["what"])
-	assert(obj[5] == jsonObj["5"])
 
 	assert(json.decode("null") == nil)
 

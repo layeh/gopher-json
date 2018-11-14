@@ -3,7 +3,6 @@ package json
 import (
 	"encoding/json"
 	"errors"
-	"strconv"
 
 	"github.com/yuin/gopher-lua"
 )
@@ -55,7 +54,11 @@ func apiEncode(L *lua.LState) int {
 	return 1
 }
 
-var errNested = errors.New("cannot encode recursively nested tables to JSON")
+var (
+	errNested      = errors.New("cannot encode recursively nested tables to JSON")
+	errSparseArray = errors.New("cannot encode sparse array")
+	errInvalidKeys = errors.New("cannot encode mixed or invalid key types")
+)
 
 type invalidTypeError lua.LValueType
 
@@ -87,42 +90,46 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 	case lua.LString:
 		data, err = json.Marshal(string(converted))
 	case *lua.LTable:
-		var arr []jsonValue
-		var obj map[string]jsonValue
-
 		if j.visited[converted] {
 			return nil, errNested
 		}
 		j.visited[converted] = true
 
-		converted.ForEach(func(k lua.LValue, v lua.LValue) {
-			i, numberKey := k.(lua.LNumber)
-			if numberKey && obj == nil {
-				index := int(i) - 1
-				if index != len(arr) {
-					// map out of order; convert to map
-					obj = make(map[string]jsonValue)
-					for i, value := range arr {
-						obj[strconv.Itoa(i+1)] = value
-					}
-					obj[strconv.Itoa(index+1)] = jsonValue{v, j.visited}
+		key, value := converted.Next(lua.LNil)
+
+		switch key.Type() {
+		case lua.LTNil: // empty table
+			data = []byte(`[]`)
+		case lua.LTNumber:
+			arr := make([]jsonValue, 0, converted.Len())
+			expectedKey := lua.LNumber(1)
+			for key != lua.LNil {
+				if key.Type() != lua.LTNumber {
+					err = errInvalidKeys
 					return
 				}
-				arr = append(arr, jsonValue{v, j.visited})
-				return
-			}
-			if obj == nil {
-				obj = make(map[string]jsonValue)
-				for i, value := range arr {
-					obj[strconv.Itoa(i+1)] = value
+				if expectedKey != key {
+					err = errSparseArray
+					return
 				}
+				arr = append(arr, jsonValue{value, j.visited})
+				expectedKey++
+				key, value = converted.Next(key)
 			}
-			obj[k.String()] = jsonValue{v, j.visited}
-		})
-		if obj != nil {
-			data, err = json.Marshal(obj)
-		} else {
 			data, err = json.Marshal(arr)
+		case lua.LTString:
+			obj := make(map[string]jsonValue)
+			for key != lua.LNil {
+				if key.Type() != lua.LTString {
+					err = errInvalidKeys
+					return
+				}
+				obj[key.String()] = jsonValue{value, j.visited}
+				key, value = converted.Next(key)
+			}
+			data, err = json.Marshal(obj)
+		default:
+			err = errInvalidKeys
 		}
 	default:
 		err = invalidTypeError(j.LValue.Type())
@@ -160,6 +167,8 @@ func decode(L *lua.LState, value interface{}) lua.LValue {
 			tbl.RawSetH(lua.LString(key), decode(L, item))
 		}
 		return tbl
+	case nil:
+		return lua.LNil
 	}
-	return lua.LNil
+	panic("unreachable")
 }
