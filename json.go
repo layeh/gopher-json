@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 // Preload adds json to the given Lua state's package.preload table. After it
@@ -144,10 +144,11 @@ func Decode(L *lua.LState, data []byte) (lua.LValue, error) {
 	if err != nil {
 		return nil, err
 	}
-	return decode(L, value), nil
+	return DecodeInterface(L, value), nil
 }
 
-func decode(L *lua.LState, value interface{}) lua.LValue {
+// DecodeInterface converts interface data to Lua values.
+func DecodeInterface(L *lua.LState, value interface{}) lua.LValue {
 	switch converted := value.(type) {
 	case bool:
 		return lua.LBool(converted)
@@ -158,13 +159,13 @@ func decode(L *lua.LState, value interface{}) lua.LValue {
 	case []interface{}:
 		arr := L.CreateTable(len(converted), 0)
 		for _, item := range converted {
-			arr.Append(decode(L, item))
+			arr.Append(DecodeInterface(L, item))
 		}
 		return arr
 	case map[string]interface{}:
 		tbl := L.CreateTable(0, len(converted))
 		for key, item := range converted {
-			tbl.RawSetH(lua.LString(key), decode(L, item))
+			tbl.RawSetH(lua.LString(key), DecodeInterface(L, item))
 		}
 		return tbl
 	case nil:
