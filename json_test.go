@@ -63,6 +63,8 @@ func TestSimple(t *testing.T) {
 	assert(json.encode(a) == "[1,2,3,4,5]")
 	`
 	s := lua.NewState()
+	defer s.Close()
+
 	Preload(s)
 	if err := s.DoString(str); err != nil {
 		t.Error(err)
@@ -77,6 +79,8 @@ func TestCustomRequire(t *testing.T) {
 	assert(type(j.encode) == "function")
 	`
 	s := lua.NewState()
+	defer s.Close()
+
 	s.PreloadModule("JSON", Loader)
 	if err := s.DoString(str); err != nil {
 		t.Error(err)
