@@ -144,10 +144,14 @@ func Decode(L *lua.LState, data []byte) (lua.LValue, error) {
 	if err != nil {
 		return nil, err
 	}
-	return decode(L, value), nil
+	return DecodeValue(L, value), nil
 }
 
-func decode(L *lua.LState, value interface{}) lua.LValue {
+// DecodeValue converts the value to a Lua value.
+//
+// This function only converts values that the encoding/json package decodes to.
+// All other values will return lua.LNil.
+func DecodeValue(L *lua.LState, value interface{}) lua.LValue {
 	switch converted := value.(type) {
 	case bool:
 		return lua.LBool(converted)
@@ -155,20 +159,23 @@ func decode(L *lua.LState, value interface{}) lua.LValue {
 		return lua.LNumber(converted)
 	case string:
 		return lua.LString(converted)
+	case json.Number:
+		return lua.LString(converted)
 	case []interface{}:
 		arr := L.CreateTable(len(converted), 0)
 		for _, item := range converted {
-			arr.Append(decode(L, item))
+			arr.Append(DecodeValue(L, item))
 		}
 		return arr
 	case map[string]interface{}:
 		tbl := L.CreateTable(0, len(converted))
 		for key, item := range converted {
-			tbl.RawSetH(lua.LString(key), decode(L, item))
+			tbl.RawSetH(lua.LString(key), DecodeValue(L, item))
 		}
 		return tbl
 	case nil:
 		return lua.LNil
 	}
-	panic("unreachable")
+
+	return lua.LNil
 }
