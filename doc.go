@@ -29,5 +29,5 @@
 //  )
 //
 //  L := lua.NewState()
-//  luajson.Preload(s)
+//  luajson.Preload(L)
 package json // import "layeh.com/gopher-json"
