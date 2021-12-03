@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func TestSimple(t *testing.T) {
@@ -62,6 +62,8 @@ func TestSimple(t *testing.T) {
 		a[i] = i
 	end
 	assert(json.encode(a) == "[1,2,3,4,5]")
+
+	assert(json.encode(json) == nil)
 	`
 	s := lua.NewState()
 	defer s.Close()

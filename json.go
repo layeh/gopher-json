@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 // Preload adds json to the given Lua state's package.preload table. After it
@@ -131,6 +131,9 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 		default:
 			err = errInvalidKeys
 		}
+	case *lua.LUserData:
+		data, err = json.Marshal(nil)
+		return
 	default:
 		err = invalidTypeError(j.LValue.Type())
 	}
