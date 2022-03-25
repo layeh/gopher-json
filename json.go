@@ -3,6 +3,7 @@ package json
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -56,7 +57,6 @@ func apiEncode(L *lua.LState) int {
 
 var (
 	errNested      = errors.New("cannot encode recursively nested tables to JSON")
-	errSparseArray = errors.New("cannot encode sparse array")
 	errInvalidKeys = errors.New("cannot encode mixed or invalid key types")
 )
 
@@ -109,10 +109,11 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 					return
 				}
 				if expectedKey != key {
-					err = errSparseArray
-					return
+					errValue := lua.LString(fmt.Sprintf("[%s] = %s", key.String(), value.String()))
+					arr = append(arr, jsonValue{errValue, j.visited})
+				} else {
+					arr = append(arr, jsonValue{value, j.visited})
 				}
-				arr = append(arr, jsonValue{value, j.visited})
 				expectedKey++
 				key, value = converted.Next(key)
 			}
