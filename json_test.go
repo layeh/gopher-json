@@ -2,6 +2,7 @@ package json
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	lua "github.com/yuin/gopher-lua"
@@ -20,9 +21,6 @@ func TestSimple(t *testing.T) {
 	assert(json.encode(nil) == "null")
 	assert(json.encode({}) == "[]")
 	assert(json.encode({1, 2, 3}) == "[1,2,3]")
-
-	local _, err = json.encode({1, 2, [10] = 3})
-	assert(string.find(err, "sparse array"))
 
 	local _, err = json.encode({1, 2, 3, name = "Tim"})
 	assert(string.find(err, "mixed or invalid key types"))
@@ -97,5 +95,61 @@ func TestDecodeValue_jsonNumber(t *testing.T) {
 	v := DecodeValue(s, json.Number("124.11"))
 	if v.Type() != lua.LTString || v.String() != "124.11" {
 		t.Fatalf("expecting LString, got %T", v)
+	}
+}
+
+func TestEncode_SparseArray(t *testing.T) {
+	tests := []struct {
+		table    string
+		expected string
+	}{
+		{
+			table: `{
+				1,
+				2,
+				[10] = 3
+			}`,
+			expected: `[1,2,"[10] = 3"]`,
+		},
+		{
+			table: `{
+				nested = {
+					[37] = "index 37"
+				}
+			}`,
+			expected: `{"nested":["[37] = index 37"]}`,
+		},
+		{
+			table: `{
+				nested = {
+					"index 1",
+					[37] = "index 37"
+				}
+			}`,
+			expected: `{"nested":["index 1","[37] = index 37"]}`,
+		},
+		{
+			table: `{
+				nested = {
+					"index 1",
+					[37] = "index 37"
+				}
+			}`,
+			expected: `{"nested":["index 1","[37] = index 37"]}`,
+		},
+	}
+
+	for _, test := range tests {
+		s := lua.NewState()
+		defer s.Close()
+		Preload(s)
+
+		luaScript := fmt.Sprintf(`
+			local json = require("json")
+			local t = %s
+			assert(json.encode(t) == '%s')`, test.table, test.expected)
+		if err := s.DoString(luaScript); err != nil {
+			t.Error(err)
+		}
 	}
 }
