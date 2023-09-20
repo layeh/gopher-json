@@ -3,15 +3,13 @@ package json
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-
 	lua "github.com/yuin/gopher-lua"
 )
 
 // Preload adds json to the given Lua state's package.preload table. After it
 // has been preloaded, it can be loaded using require:
 //
-//  local json = require("json")
+//	local json = require("json")
 func Preload(L *lua.LState) {
 	L.PreloadModule("json", Loader)
 }
@@ -102,22 +100,30 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 			data = []byte(`[]`)
 		case lua.LTNumber:
 			arr := make([]jsonValue, 0, converted.Len())
+			m := make(map[string]jsonValue)
 			expectedKey := lua.LNumber(1)
+			isSparseArray := false
 			for key != lua.LNil {
 				if key.Type() != lua.LTNumber {
 					err = errInvalidKeys
 					return
 				}
 				if expectedKey != key {
-					errValue := lua.LString(fmt.Sprintf("[%s] = %s", key.String(), value.String()))
-					arr = append(arr, jsonValue{errValue, j.visited})
-				} else {
+					isSparseArray = true
+				}
+				if !isSparseArray {
 					arr = append(arr, jsonValue{value, j.visited})
 				}
+				m[key.String()] = jsonValue{value, j.visited}
+
 				expectedKey++
 				key, value = converted.Next(key)
 			}
-			data, err = json.Marshal(arr)
+			if isSparseArray {
+				data, err = json.Marshal(m)
+			} else {
+				data, err = json.Marshal(arr)
+			}
 		case lua.LTString:
 			obj := make(map[string]jsonValue)
 			for key != lua.LNil {

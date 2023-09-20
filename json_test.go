@@ -115,9 +115,19 @@ func TestEncode_SparseArray(t *testing.T) {
 			table: `{
 				1,
 				2,
+				3,
+				4,
+				5
+			}`,
+			expected: `[1,2,3,4,5]`,
+		},
+		{
+			table: `{
+				1,
+				2,
 				[10] = 3
 			}`,
-			expected: `[1,2,"[10] = 3"]`,
+			expected: `{"1":1,"10":3,"2":2}`,
 		},
 		{
 			table: `{
@@ -125,16 +135,7 @@ func TestEncode_SparseArray(t *testing.T) {
 					[37] = "index 37"
 				}
 			}`,
-			expected: `{"nested":["[37] = index 37"]}`,
-		},
-		{
-			table: `{
-				nested = {
-					"index 1",
-					[37] = "index 37"
-				}
-			}`,
-			expected: `{"nested":["index 1","[37] = index 37"]}`,
+			expected: `{"nested":{"37":"index 37"}}`,
 		},
 		{
 			table: `{
@@ -143,15 +144,35 @@ func TestEncode_SparseArray(t *testing.T) {
 					[37] = "index 37"
 				}
 			}`,
-			expected: `{"nested":["index 1","[37] = index 37"]}`,
+			expected: `{"nested":{"1":"index 1","37":"index 37"}}`,
+		},
+		{
+			table: `{
+				nested = {
+					[37] = "index 37",
+					"index 1"
+				}
+			}`,
+			expected: `{"nested":{"1":"index 1","37":"index 37"}}`,
+		},
+		{
+			table: `{
+				nested = {
+					1,
+					2,
+					3,
+					[2] = 4,
+					[5] = "index 5"
+				}
+			}`,
+			expected: `{"nested":{"1":1,"2":2,"3":3,"5":"index 5"}}`, // TODO: find out if this is to be expected or `{"nested":{"1":1,"2":4,"3":3,"4":"index 4"}}`
 		},
 	}
 
+	s := lua.NewState()
+	defer s.Close()
+	Preload(s)
 	for _, test := range tests {
-		s := lua.NewState()
-		defer s.Close()
-		Preload(s)
-
 		luaScript := fmt.Sprintf(`
 			local json = require("json")
 			local t = %s
