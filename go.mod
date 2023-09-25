@@ -1,4 +1,4 @@
-module github.com/HannesLueer/gopher-json
+module layeh.com/gopher-json
 
 go 1.21
 
