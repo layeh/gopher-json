@@ -3,14 +3,13 @@ package json
 import (
 	"encoding/json"
 	"errors"
-
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 // Preload adds json to the given Lua state's package.preload table. After it
 // has been preloaded, it can be loaded using require:
 //
-//  local json = require("json")
+//	local json = require("json")
 func Preload(L *lua.LState) {
 	L.PreloadModule("json", Loader)
 }
@@ -56,7 +55,6 @@ func apiEncode(L *lua.LState) int {
 
 var (
 	errNested      = errors.New("cannot encode recursively nested tables to JSON")
-	errSparseArray = errors.New("cannot encode sparse array")
 	errInvalidKeys = errors.New("cannot encode mixed or invalid key types")
 )
 
@@ -102,21 +100,30 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 			data = []byte(`[]`)
 		case lua.LTNumber:
 			arr := make([]jsonValue, 0, converted.Len())
+			m := make(map[string]jsonValue)
 			expectedKey := lua.LNumber(1)
+			isSparseArray := false
 			for key != lua.LNil {
 				if key.Type() != lua.LTNumber {
 					err = errInvalidKeys
 					return
 				}
 				if expectedKey != key {
-					err = errSparseArray
-					return
+					isSparseArray = true
 				}
-				arr = append(arr, jsonValue{value, j.visited})
+				if !isSparseArray {
+					arr = append(arr, jsonValue{value, j.visited})
+				}
+				m[key.String()] = jsonValue{value, j.visited}
+
 				expectedKey++
 				key, value = converted.Next(key)
 			}
-			data, err = json.Marshal(arr)
+			if isSparseArray {
+				data, err = json.Marshal(m)
+			} else {
+				data, err = json.Marshal(arr)
+			}
 		case lua.LTString:
 			obj := make(map[string]jsonValue)
 			for key != lua.LNil {
@@ -131,6 +138,9 @@ func (j jsonValue) MarshalJSON() (data []byte, err error) {
 		default:
 			err = errInvalidKeys
 		}
+	case *lua.LUserData:
+		data, err = json.Marshal(nil)
+		return
 	default:
 		err = invalidTypeError(j.LValue.Type())
 	}

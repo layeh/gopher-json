@@ -2,9 +2,10 @@ package json
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func TestSimple(t *testing.T) {
@@ -20,9 +21,6 @@ func TestSimple(t *testing.T) {
 	assert(json.encode(nil) == "null")
 	assert(json.encode({}) == "[]")
 	assert(json.encode({1, 2, 3}) == "[1,2,3]")
-
-	local _, err = json.encode({1, 2, [10] = 3})
-	assert(string.find(err, "sparse array"))
 
 	local _, err = json.encode({1, 2, 3, name = "Tim"})
 	assert(string.find(err, "mixed or invalid key types"))
@@ -62,6 +60,16 @@ func TestSimple(t *testing.T) {
 		a[i] = i
 	end
 	assert(json.encode(a) == "[1,2,3,4,5]")
+
+	-- UserData removal
+	local t = setmetatable({10}, {
+		__call = function(t, value)
+			return value
+		end
+	})
+
+	assert(t(37) == 37)
+	assert(json.encode(t) == "[10]")
 	`
 	s := lua.NewState()
 	defer s.Close()
@@ -95,5 +103,89 @@ func TestDecodeValue_jsonNumber(t *testing.T) {
 	v := DecodeValue(s, json.Number("124.11"))
 	if v.Type() != lua.LTString || v.String() != "124.11" {
 		t.Fatalf("expecting LString, got %T", v)
+	}
+}
+
+func TestEncode_SparseArray(t *testing.T) {
+	tests := []struct {
+		table    string
+		expected string
+	}{
+		{
+			table: `{
+				1,
+				2,
+				3,
+				4,
+				5
+			}`,
+			expected: `[1,2,3,4,5]`,
+		},
+		{
+			table: `{
+				1,
+				2,
+				[10] = 3
+			}`,
+			expected: `{"1":1,"10":3,"2":2}`,
+		},
+		{
+			table: `{
+				nested = {
+					[37] = "index 37"
+				}
+			}`,
+			expected: `{"nested":{"37":"index 37"}}`,
+		},
+		{
+			table: `{
+				nested = {
+					"index 1",
+					[37] = "index 37"
+				}
+			}`,
+			expected: `{"nested":{"1":"index 1","37":"index 37"}}`,
+		},
+		{
+			table: `{
+				nested = {
+					[37] = "index 37",
+					"index 1"
+				}
+			}`,
+			expected: `{"nested":{"1":"index 1","37":"index 37"}}`,
+		},
+		{
+			table: `{
+				nested = {
+					1,
+					2,
+					3,
+					[2] = 4,
+					[5] = "index 5"
+				}
+			}`,
+			expected: `{"nested":{"1":1,"2":2,"3":3,"5":"index 5"}}`,
+		},
+		{
+			table: `{
+				[65] = 123,
+				[67] = 456
+			}`,
+			expected: `{"65":123,"67":456}`,
+		},
+	}
+
+	s := lua.NewState()
+	defer s.Close()
+	Preload(s)
+	for _, test := range tests {
+		luaScript := fmt.Sprintf(`
+			local json = require("json")
+			local t = %s
+			assert(json.encode(t) == '%s')`, test.table, test.expected)
+		if err := s.DoString(luaScript); err != nil {
+			t.Error(err)
+		}
 	}
 }
