@@ -165,7 +165,14 @@ func TestEncode_SparseArray(t *testing.T) {
 					[5] = "index 5"
 				}
 			}`,
-			expected: `{"nested":{"1":1,"2":2,"3":3,"5":"index 5"}}`, // TODO: find out if this is to be expected or `{"nested":{"1":1,"2":4,"3":3,"4":"index 4"}}`
+			expected: `{"nested":{"1":1,"2":2,"3":3,"5":"index 5"}}`,
+		},
+		{
+			table: `{
+				[65] = 123,
+				[67] = 456
+			}`,
+			expected: `{"65":123,"67":456}`,
 		},
 	}
 
